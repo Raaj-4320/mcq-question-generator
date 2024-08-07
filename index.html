@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Generator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        $(document).ready(function () {
+            // Button click handlers to toggle forms
+            $('#byTopicBtn').on('click', function () {
+                $('#byTopicForm').show();
+                $('#ownContentForm').hide();
+                $('#byTopicBtn').addClass('active');
+                $('#ownContentBtn').removeClass('active');
+            });
+
+            $('#ownContentBtn').on('click', function () {
+                $('#byTopicForm').hide();
+                $('#ownContentForm').show();
+                $('#byTopicBtn').removeClass('active');
+                $('#ownContentBtn').addClass('active');
+            });
+
+            // By Topic form interactions
+            $('.question-type button').on('click', function () {
+                $('.question-type button').removeClass('active');
+                $(this).addClass('active');
+                $('#intensity').val($(this).text());
+            });
+
+            // Handle By Topic form submission
+            $('#byTopicForm .btn-danger').on('click', function (event) {
+                event.preventDefault(); // Prevent the default button action
+
+                var topicName = $('#topicName').val().trim();
+                var numQuestions = $('#numQuestions').val();
+                var intensity = $('#intensity').val();
+
+                // console.log('Topic Name:', ownContent);
+                console.log('Number of Questions:', numQuestions);
+                console.log('Intensity:', intensity);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/topicname',
+                    data: {
+                        topicName: topicName,
+                        numQuestions: numQuestions,
+                        intensity: intensity
+                    },
+                    success: function (response) {
+                        var mcqResults = response.questions.map((question, index) => {
+                            var choices = response.choices[index];
+                            var correctAnswer = response.correct_answers[index];
+
+                            var choicesHtml = Object.entries(choices).map(([label, choice]) =>
+                                `<li>${label}: ${choice}</li>`
+                            ).join('');
+
+                            return `
+                                <div class="mcq">
+                                    <h5>Question ${index + 1}</h5>
+                                    <p>${question}</p>
+                                    <ul>${choicesHtml}</ul>
+                                    <p><strong>Correct Answer:</strong> ${correctAnswer}</p>
+                                </div>
+                            `;
+                        }).join('');
+
+                        $('#mcq-results').html(
+                            '<h4>MCQ Results:</h4>' + mcqResults
+                        );
+
+                        $('#download-link').attr('href', response.file_url).show();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error:', status, error);
+                    }
+                });
+            });
+
+            // Handle Use Your Own Content form submission
+            $('#ownContentForm .btn-danger').on('click', function (event) {
+                event.preventDefault(); // Prevent the default button action
+
+                var ownContent = $('#ownContent').val().trim();
+                var numQuestionsOwn = $('#numQuestionsOwn').val();
+                // var intensityOwn = $('#intensityOwn').val();
+
+                // console.log('Topic Name:', ownContent);
+                console.log('Content',ownContent)
+                console.log('Number of Questions:', numQuestionsOwn);
+                console.log('Intensity:',intensityOwn);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/owncontent',
+                    data: {
+                        ownContent: ownContent,
+                        numQuestions: numQuestionsOwn,
+                        intensityOwn: intensityOwn
+                    },
+                    success: function (response) {
+                        var mcqResults = response.questions.map((question, index) => {
+                            var choices = response.choices[index];
+                            var correctAnswer = response.correct_answers[index];
+
+                            var choicesHtml = Object.entries(choices).map(([label, choice]) =>
+                                `<li>${label}: ${choice}</li>`
+                            ).join('');
+
+                            return `
+                                <div class="mcq">
+                                    <h5>Question ${index + 1}</h5>
+                                    <p>${question}</p>
+                                    <ul>${choicesHtml}</ul>
+                                    <p><strong>Correct Answer:</strong> ${correctAnswer}</p>
+                                </div>
+                            `;
+                        }).join('');
+
+                        $('#mcq-results-own').html(
+                            '<h4>MCQ Results:</h4>' + mcqResults
+                        );
+
+                        $('#download-link-own').attr('href', response.file_url).show();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error:', status, error);
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <div class="container text-center">
+        <div class="header">
+            <h2>Choose an option</h2>
+            <button id="byTopicBtn" class="btn btn-outline-primary active">By Topic</button>
+            <button id="ownContentBtn" class="btn btn-outline-primary">Use Your Own Content</button>
+        </div>
+        <div class="main-content">
+            <!-- By Topic Form -->
+            <form id="byTopicForm">
+                <h4>Provide the topic name here</h4>
+                <input type="text" class="form-control topic-input" id="topicName" placeholder="e.g. List in Python" style="width: auto; display: inline-block; margin: 0 auto;">
+
+                <div class="options mt-4">
+                    <select class="form-control" id="numQuestions" style="width: auto; display: inline-block;">
+                        <option value="">Select Number of Questions</option>
+                        <option value="20">20 Questions</option>
+                        <option value="30">30 Questions</option>
+                        <option value="50">50 Questions</option>
+                    </select>
+                </div>
+
+                <h4>Select difficulty</h4>
+                <div class="question-type mt-4">
+                    <input type="hidden" id="intensity" value="">
+                    <button type="button" class="btn btn-outline-secondary">Easy</button>
+                    <button type="button" class="btn btn-outline-secondary">Medium</button>
+                    <button type="button" class="btn btn-outline-secondary">Hard</button>
+                </div>
+
+                <button type="button" class="btn btn-danger mt-4">Generate questions</button>
+                <div class="mt-4">
+                    <a id="download-link" href="#" style="display: none;" class="btn btn-primary">Download Questions as Word Document</a>
+                </div>
+                <div id="received-info"></div>
+            </form>
+
+            <!-- Use Your Own Content Form -->
+            <form id="ownContentForm" style="display: none;">
+                <h4>Provide your content here</h4>
+                <textarea class="form-control" id="ownContent" placeholder="Type or paste your content here" rows="10" style="width: 100%;"></textarea>
+            
+                <div class="options mt-4">
+                    <select class="form-control" id="numQuestionsOwn" style="width: auto; display: inline-block;">
+                        <option value="">Select Number of Questions</option>
+                        <option value="10">10 Questions</option>
+                        <option value="20">20 Questions</option>
+                        <option value="30">30 Questions</option>
+                    </select>
+                </div>
+            
+                <h4>Select difficulty</h4>
+                <div class="question-type mt-4">
+                    <input type="hidden" id="intensityOwn" name="intensityOwn" value="">
+                    <button type="button" class="btn btn-outline-secondary">Easy</button>
+                    <button type="button" class="btn btn-outline-secondary">Medium</button>
+                    <button type="button" class="btn btn-outline-secondary">Hard</button>
+                </div>
+
+                <button type="button" class="btn btn-danger mt-4">Generate questions</button>
+                <div class="mt-4">
+                    <a id="download-link-own" href="#" style="display: none;" class="btn btn-primary">Download Questions as Word Document</a>
+                </div>
+                <div id="received-info-own"></div>
+            </form>
+        </div>
+    </div>
+    <div class="mt-4" id="mcq-results">
+        <!-- MCQ results will be displayed here -->
+    </div>
+    <div class="mt-4" id="mcq-results-own">
+        <!-- MCQ results for own content will be displayed here -->
+    </div>
+</body>
+
+</html>
